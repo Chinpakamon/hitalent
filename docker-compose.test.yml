@@ -1,0 +1,30 @@
+services:
+  test-postgres:
+    image: postgres:16
+    container_name: hitalent_test_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: hitalent_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 1s
+      retries: 30
+
+  tests-runner:
+    build: .
+    container_name: hitalent_tests_runner
+    command: >
+      sh -c "
+      python wait_for_postgres.py &&
+      pytest -v tests/unit_tests
+      "
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:secret@test-postgres:5432/hitalent_test
+    volumes:
+      - .:/app
